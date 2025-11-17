@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "997490989175",
+    "project_id": "bukuku-e1104",
+    "storage_bucket": "bukuku-e1104.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997490989175:android:494b38dc674d0921750e72",
+        "android_client_info": {
+          "package_name": "com.example.bukuku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQieUiUBf9q8n0-Oa3hSOIKtiWT3c8g58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997490989175:android:400a8f55859f3863750e72",
+        "android_client_info": {
+          "package_name": "com.example.seblak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQieUiUBf9q8n0-Oa3hSOIKtiWT3c8g58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997490989175:android:21027d8748eba9d9750e72",
+        "android_client_info": {
+          "package_name": "com.example.seblakapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQieUiUBf9q8n0-Oa3hSOIKtiWT3c8g58"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
