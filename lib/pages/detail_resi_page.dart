@@ -1,9 +1,10 @@
+// File: detail_resi_page.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_bluetooth_printer/flutter_bluetooth_printer.dart'; 
 import 'dart:typed_data'; 
-// import 'dart:async'; // Tidak diperlukan lagi untuk Stream
 
 class DetailResiPage extends StatefulWidget {
   final String orderId;
@@ -31,6 +32,15 @@ class _DetailResiPageState extends State<DetailResiPage> {
     super.initState();
   }
   
+  // Fungsi helper baru untuk membuat baris dengan teks kiri dan nilai kanan
+  String _padLine(String left, String right, int totalWidth) {
+    // Hitung berapa banyak spasi yang dibutuhkan
+    int spacesNeeded = totalWidth - left.length - right.length;
+    // Pastikan tidak ada nilai negatif untuk menghindari crash
+    String padding = ' ' * (spacesNeeded > 0 ? spacesNeeded : 1); 
+    return '$left$padding$right\n';
+  }
+
   // Fungsi untuk memindai perangkat Bluetooth
   void _startScan(BuildContext context, Map<String, dynamic> data) async {
     setState(() {
@@ -171,7 +181,7 @@ class _DetailResiPageState extends State<DetailResiPage> {
     }
   }
   
-  // Fungsi helper untuk membuat data resi (raw bytes) - TIDAK ADA PERUBAHAN
+  // Fungsi helper untuk membuat data resi (raw bytes) - BAGIAN INI TELAH DIUBAH
   List<int> _buildReceiptData(Map<String, dynamic> data) {
     List<int> bytes = [];
 
@@ -189,6 +199,8 @@ class _DetailResiPageState extends State<DetailResiPage> {
         ? DateFormat('dd/MM/yyyy HH:mm').format(orderDateTimestamp.toDate())
         : 'N/A';
     
+    const int totalWidth = 32; // Lebar standar untuk struk thermal
+    
     // --- ESC/POS COMMANDS ---
     
     // 1. Inisialisasi/Reset Printer
@@ -197,10 +209,12 @@ class _DetailResiPageState extends State<DetailResiPage> {
     // 2. Header (Center, Double Height)
     bytes.add(0x1B); bytes.add(0x61); bytes.add(0x01); // Align Center
     bytes.add(0x1D); bytes.add(0x21); bytes.add(0x01); // Double Height
+    
     bytes.addAll('SEBLAK APP\n'.codeUnits); 
     
     bytes.add(0x1D); bytes.add(0x21); bytes.add(0x00); // Normal Font
-    bytes.addAll('STRUK PEMBAYARAN\n\n'.codeUnits);
+    bytes.addAll('STRUK PEMBAYARAN\n'.codeUnits);
+    bytes.addAll('================================\n'.codeUnits);
     
     // 3. Info Order (Left Align)
     bytes.add(0x1B); bytes.add(0x61); bytes.add(0x00); // Align Left
@@ -228,43 +242,48 @@ class _DetailResiPageState extends State<DetailResiPage> {
     // 5. Summary
     bytes.addAll('================================\n'.codeUnits);
 
-    // TOTAL (Bold)
+    // TOTAL (Bold) - Menggunakan padding untuk Right Align (Lebih stabil)
     bytes.add(0x1B); bytes.add(0x45); bytes.add(0x01); // Enable Bold
-    bytes.addAll('TOTAL :'.padRight(20).codeUnits);
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x02); // Align Right
-    bytes.addAll('${_formatPrice(totalAmount)}\n'.codeUnits);
+    
+    String totalLine = _padLine('TOTAL :', _formatPrice(totalAmount), totalWidth);
+    bytes.addAll(totalLine.codeUnits);
+    
     bytes.add(0x1B); bytes.add(0x45); bytes.add(0x00); // Disable Bold
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x00); // Align Left
 
-    // Bayar
-    bytes.addAll('Bayar ($paymentMethod): '.padRight(32).codeUnits);
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x02); // Align Right
-    bytes.addAll('${_formatPrice(amountPaid)}\n'.codeUnits);
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x00); // Align Left
+    // Bayar - URUTAN BENAR: Harus dicetak setelah TOTAL
+    String bayarLine = _padLine(
+        'Bayar ($paymentMethod):', 
+        _formatPrice(amountPaid), 
+        totalWidth
+    );
+    bytes.addAll(bayarLine.codeUnits);
 
-    // KEMBALIAN (Bold)
+    // KEMBALIAN (Bold) - URUTAN BENAR: Harus dicetak setelah Bayar
     bytes.add(0x1B); bytes.add(0x45); bytes.add(0x01); // Enable Bold
-    bytes.addAll('KEMBALIAN : '.padRight(32).codeUnits);
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x02); // Align Right
-    bytes.addAll('${_formatPrice(change)}\n'.codeUnits);
+    
+    String changeLine = _padLine(
+        'KEMBALIAN :', 
+        _formatPrice(change), 
+        totalWidth
+    );
+    bytes.addAll(changeLine.codeUnits);
+    
     bytes.add(0x1B); bytes.add(0x45); bytes.add(0x00); // Disable Bold
-    bytes.add(0x1B); bytes.add(0x61); bytes.add(0x00); // Align Left
 
     bytes.addAll('================================\n'.codeUnits);
 
     // 6. Footer
     bytes.add(0x1B); bytes.add(0x61); bytes.add(0x01); // Align Center
-    bytes.addAll('\nTerima Kasih!\nSelamat Menikmati\n\n'.codeUnits); 
+    bytes.addAll('\nTerima Kasih!\nSelamat Menikmati\n'.codeUnits); 
 
     // 7. Line Feeds and Cut
-    bytes.addAll('\n\n\n\n'.codeUnits); // 4 baris kosong
+    bytes.addAll('\n\n\n\n\n\n\n\n\n\n'.codeUnits); // 6 baris kosong untuk jarak potong
     bytes.add(0x1D); bytes.add(0x56); bytes.add(0x01); // Full Cut
 
     return bytes;
   }
 
-
-  // Helper untuk format harga tanpa "Rp " - TIDAK ADA PERUBAHAN
+  // Helper untuk format harga tanpa "Rp "
   String _formatPrice(double price) {
     return rupiahFormatter.format(price).replaceAll('Rp ', '');
   }

@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.point_of_sale_rounded,
-                                size: 50,
+                                size: 40,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 10),
@@ -104,7 +104,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.shopping_bag_rounded,
-                                size: 50,
+                                size: 40,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 10),
@@ -135,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.add_shopping_cart_rounded,
-                                size: 50,
+                                size: 40,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 10),
@@ -166,7 +166,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.print_rounded,
-                                size: 50,
+                                size: 40,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 10),
@@ -198,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.bar_chart_rounded,
-                                size: 50,
+                                size: 40,
                                 color: Colors.white,
                               ),
                               SizedBox(height: 10),
