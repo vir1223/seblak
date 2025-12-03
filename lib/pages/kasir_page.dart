@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:seblak/pages/bayar_page.dart';
 
@@ -52,9 +53,7 @@ class _KasirPageState extends State<KasirPage> {
         _cart[productId] = newQty;
         _cartDetails[productId] = {'name': name, 'price': price, 'stock': availableStock};
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hanya bisa menambahkan ${availableStock - currentQty} item lagi.')),
-        );
+        Get.snackbar('', 'Hanya bisa menambahkan ${availableStock - currentQty} item lagi.');
       }
       _calculateTotal();
     });
@@ -71,9 +70,7 @@ class _KasirPageState extends State<KasirPage> {
       } else if (newQuantity <= availableStock) {
         _cart[productId] = newQuantity;
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Maksimum stok ${detail['name']} adalah $availableStock.')),
-        );
+        Get.snackbar('', 'Maksimum stok ${detail['name']} adalah $availableStock.');
       }
       _calculateTotal();
     });
@@ -105,7 +102,7 @@ class _KasirPageState extends State<KasirPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Get.back(),
               child: const Text('Batal'),
             ),
             ElevatedButton(
@@ -113,11 +110,9 @@ class _KasirPageState extends State<KasirPage> {
                 final qty = int.tryParse(_qtyController.text) ?? 0;
                 if (qty > 0) {
                   _updateCart(productId, name, price, stock, qty);
-                  Navigator.of(context).pop();
+                  Get.back();
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Masukkan jumlah yang valid.')),
-                  );
+                  Get.snackbar('', 'Masukkan jumlah yang valid.');
                 }
               },
               child: const Text('Tambah'),
@@ -202,15 +197,15 @@ class _KasirPageState extends State<KasirPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Get.back(),
               child: const Text('Tutup'),
             ),
             // TOMBOL BAYAR DIPINDAHKAN KE SINI
             ElevatedButton.icon(
               onPressed: _cart.isNotEmpty ? () {
-                Navigator.of(context).pop(); // Tutup dialog keranjang
+                Get.back(); // Tutup dialog keranjang
                 // NAVIGASI KE HALAMAN PEMBAYARAN
-                _navigateToPayment(); 
+                _navigateToPayment();
               } : null,
               icon: const Icon(Icons.payment),
               label: const Text('Bayar'),
@@ -233,17 +228,12 @@ class _KasirPageState extends State<KasirPage> {
     double totalAmount = _totalPrice;
     
     // Pindah ke BayarPage dan tunggu hasil transaksi
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BayarPage(
-          cart: cartToProcess,
-          cartDetails: detailsToProcess,
-          total: totalAmount,
-          rupiahFormatter: rupiahFormatter,
-        ),
-      ),
-    );
+    final result = await Get.to(() => BayarPage(
+      cart: cartToProcess,
+      cartDetails: detailsToProcess,
+      total: totalAmount,
+      rupiahFormatter: rupiahFormatter,
+    ));
 
     // Jika transaksi berhasil (result = true), reset state keranjang
     if (result == true) {
@@ -252,9 +242,7 @@ class _KasirPageState extends State<KasirPage> {
         _cartDetails.clear();
         _totalPrice = 0.0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pembayaran berhasil! Stok diperbarui.')),
-      );
+      Get.snackbar('', 'Pembayaran berhasil! Stok diperbarui.');
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class StockPage extends StatefulWidget {
   const StockPage({super.key});
@@ -70,9 +71,7 @@ class _StockPageState extends State<StockPage> {
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
+                                    onPressed: () => Get.back(),
                                     child: Text('Close'),
                                   ),
                                   ElevatedButton(

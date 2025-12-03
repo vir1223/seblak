@@ -40,6 +40,7 @@ dependencies:
   path: ^1.9.1
   permission_handler: ^12.0.1
   syncfusion_flutter_xlsio: ^31.1.19
+  get: ^4.6.6
 
 dev_dependencies:
   flutter_lints: ^5.0.0

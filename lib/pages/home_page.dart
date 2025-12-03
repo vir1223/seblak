@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:seblak/pages/kasir_page.dart';
 import 'package:seblak/pages/lapor_page.dart';
 import 'package:seblak/pages/product_page.dart';
@@ -65,7 +66,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => KasirPage()));
+                            Get.to(() => KasirPage());
                           },
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -96,7 +97,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => ProductPage()));
+                            Get.to(() => ProductPage());
                           },
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -127,7 +128,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => StockPage()));
+                          Get.to(() => StockPage());
                           },
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -190,7 +191,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => LaporPage()));
+                            Get.to(() => LaporPage());
                           },
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,

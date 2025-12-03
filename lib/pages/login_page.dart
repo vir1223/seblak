@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:seblak/pages/home_page.dart';
 
@@ -102,9 +103,7 @@ class _LoginPageState extends State<LoginPage> {
                         }
                       } catch (error) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Login failed: ${error.toString()}')),
-                          );
+                          Get.snackbar('', 'Login failed: ${error.toString()}');
                         }
                       }
                     },
