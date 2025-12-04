@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:seblak/pages/kasir_page.dart';
 import 'package:seblak/pages/lapor_page.dart';
+import 'package:seblak/pages/login_page.dart';
 import 'package:seblak/pages/product_page.dart';
 import 'package:seblak/pages/resi_page.dart';
 import 'package:seblak/pages/stock_page.dart';
@@ -17,6 +19,16 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.orange,
+        title: Text('Seblak App'),
+        centerTitle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+      ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -52,6 +64,37 @@ class _HomePageState extends State<HomePage> {
               margin: EdgeInsets.only(top: 20),
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: Icon(Icons.logout, color: Colors.orange),
+                          onPressed: () {
+                            FirebaseAuth.instance.signOut();
+                            Get.offAll(() => LoginPage());
+                          },
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Daily Income: Rp 100,000',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
                   Expanded(
                     child: GridView.count(
                       crossAxisCount: 3,
