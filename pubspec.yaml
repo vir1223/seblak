@@ -28,19 +28,20 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  cloud_firestore: ^6.1.0
+  crypto: ^3.0.7
   cupertino_icons: ^1.0.8
   external_path: ^2.2.0
-  firebase_auth: ^6.1.2
-  firebase_core: ^4.2.1
+  fl_chart: ^0.69.2
   flutter:
     sdk: flutter
   flutter_bluetooth_printer: ^2.20.0
+  get: ^4.6.6
+  image_picker: ^1.0.8
   intl: ^0.20.2
   path: ^1.9.1
   permission_handler: ^12.0.1
   syncfusion_flutter_xlsio: ^31.1.19
-  get: ^4.6.6
+  sqflite: ^2.4.2
 
 dev_dependencies:
   flutter_lints: ^5.0.0

@@ -1,11 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:seblak/db/database_helper.dart';
 import 'package:seblak/pages/detail_resi_page.dart';
+import 'package:seblak/theme/app_theme.dart';
 
 class BayarPage extends StatefulWidget {
-  final Map<String, int> cart;
-  final Map<String, Map<String, dynamic>> cartDetails;
+  final Map<int, int> cart;
+  final Map<int, Map<String, dynamic>> cartDetails;
   final double total;
   final NumberFormat rupiahFormatter;
 
@@ -27,24 +30,32 @@ class _BayarPageState extends State<BayarPage> {
   String _metodeBayar = 'Cash';
   double _kembalian = 0.0;
   bool _isProcessing = false;
+  String? _qrisBase64;
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi nominal bayar dengan total jika cash
     _nominalBayar = widget.total;
     _bayarController.text = _nominalBayar.toStringAsFixed(0);
     _calculateKembalian();
+    _loadQris();
+  }
+
+  Future<void> _loadQris() async {
+    final qris = await DatabaseHelper.instance.getSetting('qris_image_base64');
+    if (!mounted) return;
+    setState(() => _qrisBase64 = (qris != null && qris.isNotEmpty) ? qris : null);
+  }
+
+  @override
+  void dispose() {
+    _bayarController.dispose();
+    super.dispose();
   }
 
   void _calculateKembalian() {
     setState(() {
-      // Pastikan nominal bayar tidak kurang dari total
-      if (_nominalBayar < widget.total) {
-        _kembalian = -1; // Indikasi kurang bayar
-      } else {
-        _kembalian = _nominalBayar - widget.total;
-      }
+      _kembalian = _nominalBayar < widget.total ? -1 : _nominalBayar - widget.total;
     });
   }
 
@@ -55,7 +66,6 @@ class _BayarPageState extends State<BayarPage> {
     });
   }
 
-  // Fungsi Checkout
   Future<void> _processCheckout() async {
     if (_nominalBayar < widget.total) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,119 +74,26 @@ class _BayarPageState extends State<BayarPage> {
       return;
     }
 
-    setState(() {
-      _isProcessing = true;
-    });
+    setState(() => _isProcessing = true);
 
     try {
-      final firestore = FirebaseFirestore.instance;
-      
-      // 1. Persiapan: Ambil ID semua produk yang ada di keranjang
-      List<String> productIds = widget.cart.keys.toList();
-      
-      // 2. Baca Stok Saat Ini (dalam satu query untuk efisiensi)
-      // Walaupun tidak se-aman runTransaction, ini cukup untuk single-user
-      final productsQuery = await firestore
-          .collection('products')
-          .where(FieldPath.documentId, whereIn: productIds)
-          .get();
-          
-      Map<String, DocumentSnapshot> productSnaps = {
-        for (var doc in productsQuery.docs) doc.id: doc
-      };
-
-      // 3. Pengecekan Stok & Logika Bisnis (Manual)
-      // Jika ada satu saja produk yang stoknya kurang, seluruh proses dibatalkan
-      for (var entry in widget.cart.entries) {
-        String productId = entry.key;
-        int quantity = entry.value;
-        DocumentSnapshot? productSnap = productSnaps[productId];
-
-        if (productSnap == null || !productSnap.exists) {
-          throw Exception("Produk tidak ditemukan: ID $productId.");
-        }
-
-        // Penanganan Tipe Data Defensif (untuk menghindari breakpoint)
-        final data = productSnap.data() as Map<String, dynamic>?;
-        if (data == null) throw Exception("Data produk kosong untuk ID $productId.");
-        
-        final stockValue = data['stock'];
-        if (stockValue == null || stockValue is! int) throw Exception("Field 'stock' hilang atau salah tipe pada produk ID $productId.");
-        int currentStock = stockValue;
-        
-        final namaValue = data['nama'];
-        String namaProduk = namaValue ?? "Produk Tanpa Nama"; // Tambahkan default jika nama null
-        
-        if (currentStock < quantity) {
-          throw Exception("Gagal: Stok untuk $namaProduk tidak cukup. Tersisa: $currentStock");
-        }
-      }
-      
-      // 4. Buat Batch Write
-      WriteBatch batch = firestore.batch();
-      DocumentReference orderRef = firestore.collection('orders').doc();
-      List<Map<String, dynamic>> orderItems = [];
-
-      // 5. Populate Batch dengan Operasi Tulis
-      for (var entry in widget.cart.entries) {
-        String productId = entry.key;
-        int quantity = entry.value;
-        DocumentSnapshot productSnap = productSnaps[productId]!;
-        Map<String, dynamic> data = productSnap.data() as Map<String, dynamic>;
-
-        DocumentReference productRef = firestore.collection('products').doc(productId);
-        int currentStock = data['stock'] as int;
-        int priceAtOrder = data['harga'] as int;
-        String namaProduk = data['nama'] as String;
-
-        // Operasi A: Pengurangan Stok
-        batch.update(productRef, {
-          'stock': currentStock - quantity,
-        });
-
-        // Siapkan item untuk Order
-        orderItems.add({
-          'productId': productId,
-          'name': namaProduk,
-          'quantity': quantity,
-          'priceAtOrder': priceAtOrder, 
-          'subtotal': priceAtOrder * quantity,
-        });
-      }
-
-      // Operasi B: Pembuatan Dokumen Order
-      batch.set(orderRef, {
-        'orderItems': orderItems,
-        'totalAmount': widget.total,
-        'amountPaid': _nominalBayar,
-        'change': _kembalian,
-        'paymentMethod': _metodeBayar,
-        'orderDate': FieldValue.serverTimestamp(),
-        'status': 'Completed',
-      });
-      
-      // 6. Commit Batch
-      await batch.commit();
-
-      // Transaksi berhasil, tampilkan dialog hasil
-      if (mounted) {
-        _showResultDialog(true, orderRef.id); // Kirim orderRef.id yang baru dibuat
-      }
+      final orderId = await DatabaseHelper.instance.checkout(
+        cart: widget.cart,
+        cartDetails: widget.cartDetails,
+        totalAmount: widget.total,
+        amountPaid: _nominalBayar,
+        changeAmount: _kembalian,
+        paymentMethod: _metodeBayar,
+      );
+      if (mounted) _showResultDialog(true, orderId);
     } catch (e) {
-      if (mounted) {
-        // Menangkap exception dari pengecekan manual stok/tipe data
-        _showResultDialog(false, e.toString()); 
-      }
+      if (mounted) _showResultDialog(false, null, e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  void _showResultDialog(bool success, String? orderId, [String? errorMessage]) {
+  void _showResultDialog(bool success, int? orderId, [String? errorMessage]) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -187,40 +104,36 @@ class _BayarPageState extends State<BayarPage> {
               ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 50),
+                    const Icon(Icons.check_circle, color: AppColors.success, size: 50),
                     const SizedBox(height: 10),
-                    // ... (Ringkasan pembayaran tetap sama) ...
                     Text('Total Bayar: ${widget.rupiahFormatter.format(widget.total)}'),
                     Text('Nominal Diterima: ${widget.rupiahFormatter.format(_nominalBayar)}'),
                     const Divider(),
-                    Text('Kembalian: ${widget.rupiahFormatter.format(_kembalian)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(
+                      'Kembalian: ${widget.rupiahFormatter.format(_kembalian)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.success),
+                    ),
                   ],
                 )
               : Text('Terjadi Kesalahan: ${errorMessage ?? "Error tidak diketahui"}'),
           actions: [
-            // Tombol 1: Selesai (Kembali ke KasirPage)
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog hasil
-                if (success) {
-                  Navigator.of(context).pop(true); // Kembali ke KasirPage dengan hasil true (reset cart)
-                }
+                Navigator.of(context).pop();
+                if (success) Navigator.of(context).pop(true);
               },
               child: const Text('Selesai'),
             ),
-
-            // Tombol 2: Lihat Resi (Hanya muncul jika sukses)
             if (success)
               ElevatedButton.icon(
                 onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog
-                Navigator.of(context).pop(); // Kembali ke KasirPage
-                Navigator.push(context, MaterialPageRoute(builder: (context) => DetailResiPage(orderId: orderId!))); 
-              },
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => DetailResiPage(orderId: orderId!)));
+                },
                 icon: const Icon(Icons.receipt),
                 label: const Text('Lihat Resi'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentDark),
               ),
           ],
         );
@@ -230,36 +143,27 @@ class _BayarPageState extends State<BayarPage> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pembayaran'),
-        backgroundColor: Colors.orange,
-      ),
+      appBar: AppBar(title: const Text('Pembayaran')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Total Yang Harus Dibayar
             Card(
-              elevation: 4,
-              color: Colors.red[50],
+              margin: EdgeInsets.zero,
+              color: AppColors.dangerLight,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide.none),
               child: ListTile(
                 title: const Text('TOTAL YANG HARUS DIBAYAR', style: TextStyle(fontWeight: FontWeight.w600)),
                 trailing: Text(
                   widget.rupiahFormatter.format(widget.total),
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.danger),
                 ),
               ),
             ),
-            
             const SizedBox(height: 20),
-            
-            const Divider(),
             const Text('Metode Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            
-            // Opsi Pembayaran (Cash/Lainnya)
             Row(
               children: [
                 Expanded(
@@ -267,22 +171,23 @@ class _BayarPageState extends State<BayarPage> {
                     title: const Text('Cash'),
                     value: 'Cash',
                     groupValue: _metodeBayar,
+                    activeColor: AppColors.primary,
                     onChanged: (val) {
                       setState(() {
                         _metodeBayar = val!;
-                        _nominalBayar = widget.total; 
+                        _nominalBayar = widget.total;
                         _bayarController.text = _nominalBayar.toStringAsFixed(0);
                         _calculateKembalian();
                       });
                     },
                   ),
                 ),
-                
                 Expanded(
                   child: RadioListTile<String>(
                     title: const Text('Lainnya'),
                     value: 'Other',
                     groupValue: _metodeBayar,
+                    activeColor: AppColors.primary,
                     onChanged: (val) {
                       setState(() {
                         _metodeBayar = val!;
@@ -295,44 +200,101 @@ class _BayarPageState extends State<BayarPage> {
                 ),
               ],
             ),
-            
-            
-
-            const SizedBox(height: 20),
-            
-            // Input Nominal Bayar (Hanya aktif untuk Cash)
+            if (_metodeBayar == 'Other') ...[
+              const SizedBox(height: 8),
+              if (_qrisBase64 != null)
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 220,
+                        height: 220,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border, width: 1.5),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.memory(base64Decode(_qrisBase64!), fit: BoxFit.contain),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Minta pelanggan scan QRIS di atas',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 18, color: AppColors.accentDark),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'QRIS belum di-upload. Atur di menu Setting pada halaman utama.',
+                          style: TextStyle(fontSize: 12, color: AppColors.accentDark),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+            const SizedBox(height: 12),
             TextField(
               controller: _bayarController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Masukkan Nominal Uang Diterima',
                 prefixText: 'Rp ',
-                border: const OutlineInputBorder(),
-                enabled: _metodeBayar == 'Cash', // Hanya bisa diinput jika Cash
-                fillColor: _metodeBayar == 'Other' ? Colors.grey[200] : Colors.white,
-                filled: true,
+                enabled: _metodeBayar == 'Cash',
+                fillColor: _metodeBayar == 'Other' ? AppColors.border.withOpacity(0.4) : AppColors.surface,
               ),
               onChanged: _onBayarInputChanged,
             ),
-
-            const SizedBox(height: 70),
-            
+            const SizedBox(height: 16),
+            if (_kembalian >= 0)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: AppColors.successLight, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Kembalian', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.success)),
+                    Text(
+                      widget.rupiahFormatter.format(_kembalian),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.success),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: AppColors.dangerLight, borderRadius: BorderRadius.circular(12)),
+                child: const Text(
+                  'Nominal bayar masih kurang',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.danger),
+                ),
+              ),
+            const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isProcessing || _kembalian < 0
-                    ? null // Nonaktif jika sedang proses atau kurang bayar
-                    : _processCheckout,
-                icon: _isProcessing ? const CircularProgressIndicator(color: Colors.white) : const Icon(Icons.check),
-                label: Text(
-                  _isProcessing ? 'Memproses...' : 'Selesaikan Pembayaran',
-                  style: const TextStyle(fontSize: 18),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                ),
+                onPressed: _isProcessing || _kembalian < 0 ? null : _processCheckout,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.check),
+                label: Text(_isProcessing ? 'Memproses...' : 'Selesaikan Pembayaran', style: const TextStyle(fontSize: 16)),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
               ),
             ),
           ],

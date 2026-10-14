@@ -1,4 +1,3 @@
-- [x] Add import for LoginPage
-- [x] Add Row with logout button (circular background) and daily income (rounded square background) in the Expanded Container
-- [x] Logout button navigates to LoginPage on press
-- [x] Daily income displays placeholder text
+- [x] Update home page store name and address UI with editable fields in a levitating box
+- [x] Fetch daily income from Firebase in home page
+- [x] Add product details (name, quantity, price) to exported Excel in lapor page

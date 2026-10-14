@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:seblak/db/database_helper.dart';
 import 'package:seblak/pages/home_page.dart';
+import 'package:seblak/theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,108 +11,184 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  TextEditingController usernameController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    setState(() => _isLoading = true);
+    try {
+      final success = await DatabaseHelper.instance.login(
+        usernameController.text.trim(),
+        passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Username atau password salah.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login gagal: ${error.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.orange,
       body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        
         children: [
+          // ---------------- BAGIAN ATAS: BRANDING ----------------
           Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(Icons.soup_kitchen_rounded, size: 100 , color: Colors.white),
-                SizedBox(height: 20),
-                Text('Welcome to seblak', style: TextStyle(fontSize: 24 , color: Colors.white, fontWeight: FontWeight.bold),),
-              ],
+            flex: 5,
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryDark],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+                          ),
+                          child: const Icon(Icons.soup_kitchen_rounded, size: 50, color: Colors.white),
+                        ),
+                        Positioned(
+                          bottom: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primaryDark, width: 2),
+                            ),
+                            child: const Icon(Icons.local_fire_department_rounded, size: 18, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Kasir Seblak',
+                      style: TextStyle(
+                        fontSize: 28,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Pedas mantap, catatan rapi',
+                      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.85)),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          SizedBox(height: 10),
+
+          // ---------------- BAGIAN BAWAH: FORM LOGIN ----------------
           Expanded(
-            flex: 1,
+            flex: 6,
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              padding: EdgeInsets.all(20),
-              margin: EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextFormField(
+                  const Text(
+                    'Masuk',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Masukkan akun kasir untuk melanjutkan',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 28),
+                  TextField(
                     controller: usernameController,
-                    decoration: InputDecoration(
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.orange),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.orange),
-                      ),
-                      labelStyle: TextStyle(
-                        color: Colors.black,
-                      ),
+                    decoration: const InputDecoration(
                       labelText: 'Username',
-                      border: OutlineInputBorder(),   
-                    ),
-                    style: TextStyle(
+                      prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
                     ),
                   ),
-                  SizedBox(height: 10),
-                  TextFormField(
+                  const SizedBox(height: 16),
+                  TextField(
                     controller: passwordController,
+                    obscureText: _obscurePassword,
+                    onSubmitted: (_) => _isLoading ? null : _login(),
                     decoration: InputDecoration(
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.orange),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.orange),
-                      ),
-                      labelStyle: TextStyle(
-                        color: Colors.black,
-                      ),
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          color: AppColors.textSecondary,
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
-                    obscureText: true,
                   ),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      minimumSize: Size(double.infinity, 50),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _login,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                            )
+                          : const Text('Masuk'),
                     ),
-                    onPressed: () async {
-                      try {
-                        await FirebaseAuth.instance.signInWithEmailAndPassword(
-                          email: usernameController.text,
-                          password: passwordController.text,
-                        );
-                        if (mounted) {
-                          Navigator.pushReplacement(context,
-                            MaterialPageRoute(builder: (context) => HomePage())
-                          );
-                        }
-                      } catch (error) {
-                        if (mounted) {
-                          Get.snackbar('', 'Login failed: ${error.toString()}');
-                        }
-                      }
-                    },
-                    child: Text('Login'),
                   ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

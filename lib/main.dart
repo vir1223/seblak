@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:seblak/db/database_helper.dart';
 import 'package:seblak/pages/login_page.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:seblak/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(MyApp());
+  // Membuka (dan otomatis membuat jika belum ada) database SQLite
+  // beserta tabel-tabelnya sebelum aplikasi berjalan.
+  await DatabaseHelper.instance.database;
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -20,11 +21,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: Colors.orange,
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      home: LoginPage(),
+      theme: AppTheme.theme,
+      home: const LoginPage(),
     );
   }
 }
